@@ -1,7 +1,7 @@
 USE [WideWorldImporters]
 GO
 
-/****** Object:  StoredProcedure [Sales].[InvoiceLinesReplication]    Script Date: 27.10.2024 20:35:58 ******/
+/****** Object:  StoredProcedure [Sales].[InvoiceLinesReplication]    Script Date: 27.10.2024 21:24:10 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -9,7 +9,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 -- =============================================
--- Author:		<Mike Ussoff>
+-- Author:	<Mike Ussoff>
 -- Create date: <2024-10-27>
 -- Description:	<Replication to Postgres>
 -- =============================================
@@ -19,7 +19,7 @@ BEGIN
 	SET NOCOUNT ON;
 	SET XACT_ABORT ON;
 
--- удалить старые записи
+-- delete old records
 	DECLARE @deathline DateTime;
 	SELECT @deathline = DATEADD(DAY, -1, getdate());
 	DELETE FROM [Sales].[InvoiceLinesLogs] WHERE SentOn < @deathline;
@@ -27,14 +27,14 @@ BEGIN
 	DROP TABLE IF EXISTS #InvoiceLinesIDs;
 	SELECT Id INTO #InvoiceLinesIDs FROM Sales.InvoiceLinesLogs WHERE SentOn is null ;
 
--- вставка (TypeOp = 1)
+-- insert (TypeOp = 1)
 	INSERT INTO pg_wwi.wideworldimporters.sales.invoicelines 
 	(InvoiceLineID, InvoiceID, StockItemID, [Description], PackageTypeID, Quantity, UnitPrice, TaxRate, TaxAmount, LineProfit, ExtendedPrice, LastEditedBy, LastEditedWhen)
 	SELECT InvoiceLineID, InvoiceID, StockItemID, [Description], PackageTypeID, Quantity, UnitPrice, TaxRate, TaxAmount, LineProfit, ExtendedPrice, LastEditedBy, LastEditedWhen
 	FROM Sales.InvoiceLinesLogs WHERE TypeOp = 1 and Id in (select Id from #InvoiceLinesIDs);
 	UPDATE Sales.InvoiceLinesLogs  SET SentOn = getutcdate() WHERE TypeOp = 1 and Id in (select Id from #InvoiceLinesIDs);
 	
--- обновление (TypeOp = 2)
+-- update (TypeOp = 2)
 	UPDATE dest SET 
 	dest.InvoiceID = src.InvoiceID, 
 	dest.StockItemID = src.StockItemID, 
@@ -57,7 +57,7 @@ BEGIN
 	) src ON src.InvoiceLineID = dest.InvoiceLineID and src.Num = 1 and src.Id in (select Id from #InvoiceLinesIDs);
 	UPDATE Sales.InvoiceLinesLogs  SET SentOn = getutcdate() WHERE TypeOp = 2 and Id in (SELECT Id FROM #InvoiceLinesIDs);
 
--- удаление  (TypeOp = 3)
+-- delete  (TypeOp = 3)
 	DELETE FROM pg_wwi.wideworldimporters.sales.invoicelines WHERE InvoiceLineID in 
 	(SELECT InvoiceLineID FROM Sales.InvoiceLinesLogs WHERE TypeOp = 3 and Id in (SELECT Id FROM #InvoiceLinesIDs)) 
 	UPDATE Sales.InvoiceLinesLogs  SET SentOn = getutcdate() WHERE TypeOp = 3 and Id in (SELECT Id FROM #InvoiceLinesIDs);
