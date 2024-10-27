@@ -1,0 +1,67 @@
+1. Настроим репликацию таблицы [Sales].[InvoiceLines] базы данных WideWorldImporters. 
+
+2. Настройка Linked server была выполнена в домашнем задании #4
+
+3. Схема таблицы [Sales].[InvoiceLines] выглядит следующим образом.
+
+CREATE TABLE [Sales].[InvoiceLines](
+	[InvoiceLineID] [int] NOT NULL,
+	[InvoiceID] [int] NOT NULL,
+	[StockItemID] [int] NOT NULL,
+	[Description] [nvarchar](100) NOT NULL,
+	[PackageTypeID] [int] NOT NULL,
+	[Quantity] [int] NOT NULL,
+	[UnitPrice] [decimal](18, 2) NULL,
+	[TaxRate] [decimal](18, 3) NOT NULL,
+	[TaxAmount] [decimal](18, 2) NOT NULL,
+	[LineProfit] [decimal](18, 2) NOT NULL,
+	[ExtendedPrice] [decimal](18, 2) NOT NULL,
+	[LastEditedBy] [int] NOT NULL,
+	[LastEditedWhen] [datetime2](7) NOT NULL,
+ CONSTRAINT [PK_Sales_InvoiceLines] PRIMARY KEY CLUSTERED 
+(
+	[InvoiceLineID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [USERDATA]
+) ON [USERDATA]
+
+4. Создадим новую таблицу в которой будем хранить протокол работы с данными в таблице InvoiceLines. В таблицу добавлены поля 
+Id - инкрементный ключ 
+QueuedOn - время поставноки в очередь
+SentOn - время отправки в БД Postgresql
+TypeOp - тип операции.
+
+В результате схема таблицы для логов выглядит так:
+
+CREATE TABLE [Sales].[InvoiceLinesLogs](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[QueuedOn] [datetime] NOT NULL,
+	[SentOn] [datetime] NULL,
+	[TypeOp] [int] NOT NULL,
+	[InvoiceLineID] [int] NOT NULL,
+	[InvoiceID] [int] NOT NULL,
+	[StockItemID] [int] NOT NULL,
+	[Description] [nvarchar](100) NOT NULL,
+	[PackageTypeID] [int] NOT NULL,
+	[Quantity] [int] NOT NULL,
+	[UnitPrice] [decimal](18, 2) NULL,
+	[TaxRate] [decimal](18, 3) NOT NULL,
+	[TaxAmount] [decimal](18, 2) NOT NULL,
+	[LineProfit] [decimal](18, 2) NOT NULL,
+	[ExtendedPrice] [decimal](18, 2) NOT NULL,
+	[LastEditedBy] [int] NOT NULL,
+	[LastEditedWhen] [datetime2](7) NOT NULL,
+ CONSTRAINT [PK_Sales_InvoiceLinesLogs] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+
+5. В таблицу [Sales].[InvoiceLines] добавим триггер (файл Trigger.sql), который будет протоклировать операции с данными в [Sales].[InvoiceLinesLogs].
+
+6. Добавим хранимую процедуру, которая собственно и будет выполнять репликацию данных в БД Postgresql (файл Procedure.sql). Данная процедура группирует несколько однотипных операций с записью в одну - последнюю, а также умеет чистить старые логи.
+
+7. Настроим джоб, запускающий процедуру каждые несколько минут (или часов) в зависимости от скорости обновления данных.
+
+
+
+
